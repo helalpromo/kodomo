@@ -236,32 +236,42 @@
     </div>
 
     <script>
-        // ==========================================
-        // আপনার ইউজারনেম এবং পাসওয়ার্ড এখানে সেট করুন:
-        // ==========================================
-        const CORRECT_USER = "alhelal"; // এখানে আপনার পছন্দের ইউজারনেম দিন
-        const CORRECT_PASS = "12345"; // এখানে আপনার পছন্দের পাসওয়ার্ড দিন
+        const CORRECT_USER = "admin";
+        const CORRECT_PASS = "12345";
+
+        // পেজ লোড হওয়ার সময় চেক করা যে আগে থেকেই লগইন করা ছিল কিনা
+        window.onload = function() {
+            if (localStorage.getItem("isLoggedIn") === "true") {
+                showMainApp();
+            }
+        };
 
         function handleLogin(event) {
-            event.preventDefault(); // ফর্ম রিফ্রেশ হওয়া রোধ করতে
-            
+            event.preventDefault();
             const userInput = document.getElementById("username").value.trim();
             const passInput = document.getElementById("password").value.trim();
             const errorMsg = document.getElementById("loginError");
 
             if (userInput === CORRECT_USER && passInput === CORRECT_PASS) {
-                document.getElementById("loginScreen").classList.add("hidden");
-                document.getElementById("mainApp").classList.remove("hidden");
-                document.getElementById('date').valueAsDate = new Date();
-                document.getElementById('invoiceNumber').value = nextInvoiceNum;
-                updateMonthFilter();
-                renderTable();
+                localStorage.setItem("isLoggedIn", "true"); // লগইন স্ট্যাটাস সেভ রাখা
+                showMainApp();
             } else {
                 errorMsg.classList.remove("hidden");
             }
         }
 
+        function showMainApp() {
+            document.getElementById("loginScreen").classList.add("hidden");
+            document.getElementById("mainApp").classList.remove("hidden");
+            document.getElementById('date').valueAsDate = new Date();
+            loadEntries();
+            document.getElementById('invoiceNumber').value = nextInvoiceNum;
+            updateMonthFilter();
+            renderTable();
+        }
+
         function handleLogout() {
+            localStorage.removeItem("isLoggedIn"); // লগইন স্ট্যাটাস মুছে ফেলা
             document.getElementById("mainApp").classList.add("hidden");
             document.getElementById("loginScreen").classList.remove("hidden");
             document.getElementById("username").value = "";
@@ -271,6 +281,28 @@
 
         let entries = [];
         let nextInvoiceNum = 1;
+
+        // লোকাল স্টোরেজ থেকে ডেটা লোড করা
+        function loadEntries() {
+            const savedEntries = localStorage.getItem("goodMartEntries");
+            if (savedEntries) {
+                entries = JSON.parse(savedEntries);
+            }
+            const savedNextNum = localStorage.getItem("goodMartNextInvoiceNum");
+            if (savedNextNum) {
+                nextInvoiceNum = parseInt(savedNextNum);
+            } else if (entries.length > 0) {
+                // ইনভয়েস নম্বর স্বয়ংক্রিয়ভাবে সাজানোর জন্য
+                let maxNum = Math.max(...entries.map(e => parseInt(e.number) || 0));
+                nextInvoiceNum = maxNum >= 1 ? maxNum + 1 : 1;
+            }
+        }
+
+        // লোকাল স্টোরেজে ডেটা সেভ করা
+        function saveEntries() {
+            localStorage.setItem("goodMartEntries", JSON.stringify(entries));
+            localStorage.setItem("goodMartNextInvoiceNum", nextInvoiceNum);
+        }
 
         function handleTypeChange() {
             const type = document.getElementById("invoiceType").value;
@@ -395,6 +427,8 @@
             }
 
             entries.push({ date, type, number, credit, debit });
+            nextInvoiceNum++;
+            saveEntries(); // ব্রাউজারে স্থায়ীভাবে সেভ করা
 
             let entryMonth = date.substring(0, 7);
             let monthEntries = entries.filter(item => item.date && item.date.startsWith(entryMonth));
@@ -410,9 +444,7 @@
 
             showInvoiceModal(date, type, number, credit || debit, mCredit.toFixed(2), mDebit.toFixed(2), mBalanceText);
 
-            nextInvoiceNum++;
             document.getElementById("invoiceNumber").value = nextInvoiceNum;
-            
             document.getElementById("credit").value = "";
             document.getElementById("debit").value = "";
 
@@ -438,9 +470,12 @@
         }
 
         function deleteEntry(index) {
-            entries.splice(index, 1);
-            updateMonthFilter();
-            renderTable();
+            if(confirm("আপনি কি নিশ্চিতভাবে এই এন্ট্রিটি ডিলিট করতে চান?")) {
+                entries.splice(index, 1);
+                saveEntries(); // ডিলিট করার পর আপডেট ডেটা সেভ করা
+                updateMonthFilter();
+                renderTable();
+            }
         }
 
         function exportData() {
