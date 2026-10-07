@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Good Mart Enterprise - Invoice Manager</title>
+    <!-- Tailwind CSS for modern UI styling -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printableInvoice, #printableInvoice * {
+                visibility: visible;
+            }
+            #printableInvoice {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: white;
+                padding: 20px;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="min-h-screen flex items-center justify-center bg-gray-900 px-4">
+        <div class="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
+            <h2 class="text-2xl font-bold text-center text-blue-600 mb-2">Good Mart Enterprise</h2>
+            <p class="text-center text-gray-500 mb-6 text-sm">দয়া করে আপনার লগইন তথ্য দিন</p>
+            
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2">ইউজারনেম (Username):</label>
+                    <input type="text" id="username" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="ইউজারনেম লিখুন">
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2">পাসওয়ার্ড (Password):</label>
+                    <input type="password" id="password" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="পাসওয়ার্ড লিখুন">
+                </div>
+                <p id="loginError" class="text-red-500 text-xs hidden font-bold text-center">ভুল ইউজারনেম অথবা পাসওয়ার্ড!</p>
+                <div>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full focus:outline-none focus:shadow-outline">
+                        লগইন করুন
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="mainApp" class="container mx-auto px-4 py-8 max-w-6xl hidden">
+        <div class="flex justify-between items-center mb-6 no-print">
+            <div>
+                <h1 class="text-3xl font-bold text-blue-600">Good Mart Enterprise</h1>
+                <p class="text-gray-600">ইনভয়েস এবং লেনদেন ম্যানেজমেন্ট সিস্টেম</p>
+            </div>
+            <button onclick="handleLogout()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded text-sm">লগআউট</button>
+        </div>
+
+        <!-- Form Section -->
+        <div class="bg-white shadow-md rounded-lg p-6 mb-8 no-print">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">নতুন ইনভয়েস এন্ট্রি করুন</h2>
+            <form id="invoiceForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                
+                <!-- Date -->
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2">তারিখ (Date):</label>
+                    <input type="date" id="date" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                </div>
+
+                <!-- Invoice Type Dropdown -->
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2">লেনদেনের ধরন (Transaction Name):</label>
+                    <select id="invoiceType" onchange="handleTypeChange()" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        <option value="Sales">Sales</option>
+                        <option value="Paid Cash">Paid Cash</option>
+                        <option value="Paid Bank">Paid Bank</option>
+                    </select>
+                </div>
+
+                <!-- Invoice Number -->
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2">ইনভয়েস নম্বর (Invoice Number):</label>
+                    <input type="text" id="invoiceNumber" readonly class="bg-gray-100 shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight">
+                </div>
+
+                <!-- Credit Value Container -->
+                <div id="creditContainer">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">ক্রেডিট (Credit/Amount):</label>
+                    <input type="number" id="credit" step="0.01" placeholder="0.00" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                </div>
+
+                <!-- Debit Value Container -->
+                <div id="debitContainer" class="hidden">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">ডেবিট (Debit/Amount):</label>
+                    <input type="number" id="debit" step="0.01" placeholder="0.00" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                </div>
+
+                <!-- Submit Button -->
+                <div class="flex items-end lg:col-span-3">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full">
+                        Submit
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Filter, Search & Table Section -->
+        <div class="bg-white shadow-md rounded-lg overflow-hidden p-6 no-print">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                <!-- Month Filter -->
+                <div class="flex items-center gap-2 w-full md:w-auto">
+                    <label class="text-gray-700 font-bold text-sm">মাস:</label>
+                    <select id="monthFilter" onchange="renderTable()" class="shadow border rounded py-1 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        <option value="">কোনো মাস নেই</option>
+                    </select>
+                </div>
+
+                <!-- Invoice Search Box -->
+                <div class="flex items-center gap-2 w-full md:w-auto">
+                    <label class="text-gray-700 font-bold text-sm">ইনভয়েস খুঁজুন:</label>
+                    <input type="text" id="searchInvoice" placeholder="নম্বর দিয়ে খুঁজুন..." onkeyup="renderTable()" class="shadow border rounded py-1 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                </div>
+                
+                <button onclick="exportData()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded text-sm w-full md:w-auto">ডেটা এক্সপোর্ট (CSV)</button>
+            </div>
+
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">সকল লেনদেনের তালিকা</h2>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white border border-gray-200">
+                    <thead>
+                        <tr class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
+                            <th class="py-3 px-6 text-left">Date</th>
+                            <th class="py-3 px-6 text-left">Transaction Name</th>
+                            <th class="py-3 px-6 text-left">Invoice Number</th>
+                            <th class="py-3 px-6 text-right">Credit</th>
+                            <th class="py-3 px-6 text-right">Debit</th>
+                            <th class="py-3 px-6 text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="text-gray-600 text-sm font-light">
+                        <!-- Dynamically filled -->
+                    </tbody>
+                    <tfoot>
+                        <tr class="bg-gray-100 font-bold text-gray-700 border-t-2 border-gray-300">
+                            <td colspan="3" class="py-3 px-6 text-right">Total:</td>
+                            <td id="totalCredit" class="py-3 px-6 text-right">0.00</td>
+                            <td id="totalDebit" class="py-3 px-6 text-right">0.00</td>
+                            <td></td>
+                        </tr>
+                        <tr class="bg-blue-50 font-bold text-blue-800">
+                            <td colspan="2" class="py-3 px-6 text-right">Closing Balance:</td>
+                            <td colspan="4" id="closingBalance" class="py-3 px-6 text-left text-base">0.00</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Printable Invoice Modal -->
+    <div id="invoiceModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-lg p-8 max-w-lg w-full shadow-2xl relative">
+            <button onclick="closeInvoiceModal()" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 text-xl font-bold no-print">&times;</button>
+            
+            <!-- Printable Area -->
+            <div id="printableInvoice" class="p-4 bg-white">
+                <div class="text-center border-b pb-4 mb-4">
+                    <h2 class="text-2xl font-bold text-blue-800">Good Mart Enterprise</h2>
+                    <p class="text-sm text-gray-600">Proprietor: Md Al Helal Khan</p>
+                    <p class="text-sm text-gray-600">Mobile Number: 01714692560</p>
+                    <p class="text-sm text-gray-600">Address: Kamarpara, Rangpur</p>
+                </div>
+
+                <div class="mb-4 flex justify-between text-sm text-gray-700">
+                    <div>
+                        <p><strong>Invoice Number:</strong> <span id="printInvoiceNum"></span></p>
+                    </div>
+                    <div>
+                        <p><strong>Date:</strong> <span id="printDate"></span></p>
+                    </div>
+                </div>
+
+                <!-- Current Transaction Details -->
+                <div class="mb-4">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase mb-1">Current Transaction</h3>
+                    <table class="w-full border-collapse border border-gray-300 text-sm">
+                        <tr class="bg-gray-100">
+                            <th class="border border-gray-300 p-2 text-left">Transaction Name</th>
+                            <th class="border border-gray-300 p-2 text-right">Amount</th>
+                        </tr>
+                        <tr>
+                            <td id="printType" class="border border-gray-300 p-2"></td>
+                            <td id="printAmount" class="border border-gray-300 p-2 text-right"></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Monthly Summary & Closing Balance -->
+                <div class="mb-4 bg-gray-50 p-3 rounded border border-gray-200 text-sm">
+                    <h3 class="text-xs font-bold text-gray-600 uppercase mb-2">Monthly Summary (এই মাসের হিসাব)</h3>
+                    <div class="flex justify-between py-1 border-b border-gray-200">
+                        <span class="text-gray-600">Total Credit (Sales):</span>
+                        <span id="printMonthCredit" class="font-semibold text-gray-800">0.00</span>
+                    </div>
+                    <div class="flex justify-between py-1 border-b border-gray-200">
+                        <span class="text-gray-600">Total Debit (Paid):</span>
+                        <span id="printMonthDebit" class="font-semibold text-gray-800">0.00</span>
+                    </div>
+                    <div class="flex justify-between py-1 font-bold text-blue-800 mt-1">
+                        <span>Closing Balance:</span>
+                        <span id="printClosingBalance">0.00</span>
+                    </div>
+                </div>
+
+                <div class="mt-8 text-center text-xs text-gray-500">
+                    <p>Thank you for doing business with us!</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="mt-6 flex gap-4 no-print">
+                <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded w-full">Print Invoice</button>
+                <button onclick="closeInvoiceModal()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // আপনার ইউজারনেম এবং পাসওয়ার্ড এখানে সেট করুন:
+        // ==========================================
+        const CORRECT_USER = "alhelal"; // এখানে আপনার পছন্দের ইউজারনেম দিন
+        const CORRECT_PASS = "12345"; // এখানে আপনার পছন্দের পাসওয়ার্ড দিন
+
+        function handleLogin(event) {
+            event.preventDefault(); // ফর্ম রিফ্রেশ হওয়া রোধ করতে
+            
+            const userInput = document.getElementById("username").value.trim();
+            const passInput = document.getElementById("password").value.trim();
+            const errorMsg = document.getElementById("loginError");
+
+            if (userInput === CORRECT_USER && passInput === CORRECT_PASS) {
+                document.getElementById("loginScreen").classList.add("hidden");
+                document.getElementById("mainApp").classList.remove("hidden");
+                document.getElementById('date').valueAsDate = new Date();
+                document.getElementById('invoiceNumber').value = nextInvoiceNum;
+                updateMonthFilter();
+                renderTable();
+            } else {
+                errorMsg.classList.remove("hidden");
+            }
+        }
+
+        function handleLogout() {
+            document.getElementById("mainApp").classList.add("hidden");
+            document.getElementById("loginScreen").classList.remove("hidden");
+            document.getElementById("username").value = "";
+            document.getElementById("password").value = "";
+            document.getElementById("loginError").classList.add("hidden");
+        }
+
+        let entries = [];
+        let nextInvoiceNum = 1;
+
+        function handleTypeChange() {
+            const type = document.getElementById("invoiceType").value;
+            const creditContainer = document.getElementById("creditContainer");
+            const debitContainer = document.getElementById("debitContainer");
+            const creditInput = document.getElementById("credit");
+            const debitInput = document.getElementById("debit");
+
+            if (type === "Sales") {
+                creditContainer.classList.remove("hidden");
+                debitContainer.classList.add("hidden");
+                debitInput.value = "";
+            } else {
+                creditContainer.classList.add("hidden");
+                debitContainer.classList.remove("hidden");
+                creditInput.value = "";
+            }
+        }
+
+        function updateMonthFilter(selectedTargetMonth = null) {
+            const monthFilter = document.getElementById("monthFilter");
+            let currentSelected = selectedTargetMonth || monthFilter.value;
+            
+            let months = [...new Set(entries.map(item => item.date ? item.date.substring(0, 7) : ''))].filter(Boolean);
+            months.sort().reverse();
+
+            monthFilter.innerHTML = "";
+            
+            if (months.length === 0) {
+                let option = document.createElement("option");
+                option.value = "";
+                option.textContent = "কোনো মাস নেই";
+                monthFilter.appendChild(option);
+                return;
+            }
+
+            months.forEach(m => {
+                let option = document.createElement("option");
+                option.value = m;
+                let [year, month] = m.split('-');
+                let dateObj = new Date(year, month - 1, 1);
+                option.textContent = dateObj.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+                monthFilter.appendChild(option);
+            });
+
+            if (months.includes(currentSelected)) {
+                monthFilter.value = currentSelected;
+            } else {
+                monthFilter.value = months[0];
+            }
+        }
+
+        function renderTable() {
+            const tableBody = document.getElementById("tableBody");
+            const monthFilter = document.getElementById("monthFilter");
+            const selectedMonth = monthFilter.value;
+            const searchQuery = document.getElementById("searchInvoice").value.trim().toLowerCase();
+            
+            tableBody.innerHTML = "";
+            
+            let totalCredit = 0;
+            let totalDebit = 0;
+
+            let filteredEntries = entries.filter(item => {
+                let matchesMonth = selectedMonth ? (item.date && item.date.startsWith(selectedMonth)) : true;
+                let matchesSearch = searchQuery ? (item.number && item.number.toString().toLowerCase().includes(searchQuery)) : true;
+                return matchesMonth && matchesSearch;
+            });
+
+            if (filteredEntries.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-gray-400">কোনো লেনদেন পাওয়া যায়নি।</td></tr>`;
+                document.getElementById("totalCredit").innerText = "0.00";
+                document.getElementById("totalDebit").innerText = "0.00";
+                document.getElementById("closingBalance").innerText = "0.00";
+                return;
+            }
+
+            filteredEntries.forEach((item) => {
+                if(item.credit) totalCredit += parseFloat(item.credit);
+                if(item.debit) totalDebit += parseFloat(item.debit);
+
+                let originalIndex = entries.findIndex(e => e === item);
+
+                let row = `<tr class="border-b border-gray-200 hover:bg-gray-100">
+                    <td class="py-3 px-6 text-left">${item.date || ''}</td>
+                    <td class="py-3 px-6 text-left">${item.type}</td>
+                    <td class="py-3 px-6 text-left font-semibold text-blue-600">${item.number}</td>
+                    <td class="py-3 px-6 text-right">${item.credit ? parseFloat(item.credit).toFixed(2) : ''}</td>
+                    <td class="py-3 px-6 text-right">${item.debit ? parseFloat(item.debit).toFixed(2) : ''}</td>
+                    <td class="py-3 px-6 text-center">
+                        <button onclick="deleteEntry(${originalIndex})" class="text-red-500 hover:text-red-700 font-bold">মুছুন</button>
+                    </td>
+                </tr>`;
+                tableBody.innerHTML += row;
+            });
+
+            let closingBalance = totalCredit - totalDebit;
+
+            document.getElementById("totalCredit").innerText = totalCredit.toFixed(2);
+            document.getElementById("totalDebit").innerText = totalDebit.toFixed(2);
+            
+            let balanceText = `${Math.abs(closingBalance).toFixed(2)} (${closingBalance >= 0 ? 'Credit Balance' : 'Debit Balance'})`;
+            document.getElementById("closingBalance").innerText = balanceText;
+        }
+
+        document.getElementById("invoiceForm").addEventListener("submit", function(e) {
+            e.preventDefault();
+            
+            const date = document.getElementById("date").value;
+            const type = document.getElementById("invoiceType").value;
+            const number = document.getElementById("invoiceNumber").value;
+            const credit = document.getElementById("credit").value;
+            const debit = document.getElementById("debit").value;
+
+            if (type === "Sales" && !credit) {
+                alert("দয়া করে ক্রেডিটের পরিমাণ লিখুন।");
+                return;
+            }
+            if ((type === "Paid Cash" || type === "Paid Bank") && !debit) {
+                alert("দয়া করে ডেবিটের পরিমাণ লিখুন।");
+                return;
+            }
+
+            entries.push({ date, type, number, credit, debit });
+
+            let entryMonth = date.substring(0, 7);
+            let monthEntries = entries.filter(item => item.date && item.date.startsWith(entryMonth));
+            
+            let mCredit = 0;
+            let mDebit = 0;
+            monthEntries.forEach(item => {
+                if(item.credit) mCredit += parseFloat(item.credit);
+                if(item.debit) mDebit += parseFloat(item.debit);
+            });
+            let mClosing = mCredit - mDebit;
+            let mBalanceText = `${Math.abs(mClosing).toFixed(2)} (${mClosing >= 0 ? 'Credit Balance' : 'Debit Balance'})`;
+
+            showInvoiceModal(date, type, number, credit || debit, mCredit.toFixed(2), mDebit.toFixed(2), mBalanceText);
+
+            nextInvoiceNum++;
+            document.getElementById("invoiceNumber").value = nextInvoiceNum;
+            
+            document.getElementById("credit").value = "";
+            document.getElementById("debit").value = "";
+
+            updateMonthFilter(entryMonth);
+            renderTable();
+        });
+
+        function showInvoiceModal(date, type, number, amount, totalCredit, totalDebit, closingBalance) {
+            document.getElementById("printInvoiceNum").innerText = number;
+            document.getElementById("printDate").innerText = date;
+            document.getElementById("printType").innerText = type;
+            document.getElementById("printAmount").innerText = parseFloat(amount).toFixed(2);
+            
+            document.getElementById("printMonthCredit").innerText = totalCredit;
+            document.getElementById("printMonthDebit").innerText = totalDebit;
+            document.getElementById("printClosingBalance").innerText = closingBalance;
+            
+            document.getElementById("invoiceModal").classList.remove("hidden");
+        }
+
+        function closeInvoiceModal() {
+            document.getElementById("invoiceModal").classList.add("hidden");
+        }
+
+        function deleteEntry(index) {
+            entries.splice(index, 1);
+            updateMonthFilter();
+            renderTable();
+        }
+
+        function exportData() {
+            if(entries.length === 0) {
+                alert("এক্সপোর্ট করার মতো কোনো ডেটা নেই!");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,Date,Invoice Type,Invoice Number,Credit,Debit\n";
+            
+            let totalCredit = 0;
+            let totalDebit = 0;
+
+            entries.forEach(row => {
+                if(row.credit) totalCredit += parseFloat(row.credit);
+                if(row.debit) totalDebit += parseFloat(row.debit);
+                csvContent += `${row.date || ''},${row.type},${row.number || ''},${row.credit || ''},${row.debit || ''}\n`;
+            });
+
+            let closingBalance = totalCredit - totalDebit;
+
+            csvContent += `\n`;
+            csvContent += `,,,${totalCredit.toFixed(2)},${totalDebit.toFixed(2)}\n`;
+            csvContent += `,,Closing Balance,,${closingBalance.toFixed(2)}\n`;
+            csvContent += `,,,${totalCredit.toFixed(2)},${totalCredit.toFixed(2)}\n`;
+
+            var encodedUri = encodeURI(csvContent);
+            var link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "Good_Mart_Enterprise_Export.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
