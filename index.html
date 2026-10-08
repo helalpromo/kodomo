@@ -124,25 +124,42 @@
 
         <!-- Filter, Search & Table Section -->
         <div class="bg-white shadow-md rounded-lg overflow-hidden p-6 no-print">
-            <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 items-end">
                 <!-- Month Filter -->
-                <div class="flex items-center gap-2 w-full md:w-auto">
-                    <label class="text-gray-700 font-bold text-sm">মাস:</label>
-                    <select id="monthFilter" onchange="renderTable()" class="shadow border rounded py-1 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                <div>
+                    <label class="text-gray-700 font-bold text-sm block mb-1">মাস:</label>
+                    <select id="monthFilter" onchange="currentPage = 1; renderTable();" class="shadow border rounded py-2 px-3 text-gray-700 w-full leading-tight focus:outline-none focus:shadow-outline">
                         <option value="">কোনো মাস নেই</option>
                     </select>
                 </div>
 
-                <!-- Invoice Search Box -->
-                <div class="flex items-center gap-2 w-full md:w-auto">
-                    <label class="text-gray-700 font-bold text-sm">ইনভয়েস খুঁজুন:</label>
-                    <input type="text" id="searchInvoice" placeholder="নম্বর দিয়ে খুঁজুন..." onkeyup="renderTable()" class="shadow border rounded py-1 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                <!-- Search by Date -->
+                <div>
+                    <label class="text-gray-700 font-bold text-sm block mb-1">তারিখ দিয়ে খুঁজুন:</label>
+                    <input type="date" id="searchDate" onchange="currentPage = 1; renderTable();" class="shadow border rounded py-2 px-3 text-gray-700 w-full leading-tight focus:outline-none focus:shadow-outline">
                 </div>
-                
-                <button onclick="exportData()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded text-sm w-full md:w-auto">ডেটা এক্সপোর্ট (CSV)</button>
+
+                <!-- Search by Brand -->
+                <div>
+                    <label class="text-gray-700 font-bold text-sm block mb-1">ব্র্যান্ড দিয়ে খুঁজুন:</label>
+                    <select id="searchBrand" onchange="currentPage = 1; renderTable();" class="shadow border rounded py-2 px-3 text-gray-700 w-full leading-tight focus:outline-none focus:shadow-outline">
+                        <option value="">সকল ব্র্যান্ড</option>
+                        <option value="Kodomo">Kodomo</option>
+                        <option value="Fogg">Fogg</option>
+                    </select>
+                </div>
+
+                <!-- Invoice Number Search Box -->
+                <div>
+                    <label class="text-gray-700 font-bold text-sm block mb-1">ইনভয়েস খুঁজুন:</label>
+                    <input type="text" id="searchInvoice" placeholder="নম্বর দিয়ে খুঁজুন..." onkeyup="currentPage = 1; renderTable();" class="shadow border rounded py-2 px-3 text-gray-700 w-full leading-tight focus:outline-none focus:shadow-outline">
+                </div>
             </div>
 
-            <h2 class="text-xl font-semibold text-gray-700 mb-4">সকল লেনদেনের তালিকা</h2>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-gray-700">সকল লেনদেনের তালিকা</h2>
+                <button onclick="exportData()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded text-sm">ডেটা এক্সপোর্ট (CSV)</button>
+            </div>
             
             <div class="overflow-x-auto">
                 <table class="min-w-full bg-white border border-gray-200">
@@ -173,6 +190,11 @@
                         </tr>
                     </tfoot>
                 </table>
+            </div>
+
+            <!-- Pagination Controls -->
+            <div id="paginationControls" class="flex justify-between items-center mt-4 pt-4 border-t border-gray-200">
+                <!-- Dynamically filled -->
             </div>
         </div>
     </div>
@@ -251,6 +273,11 @@
         const CORRECT_USER = "kodomo";
         const CORRECT_PASS = "Helal9090";
 
+        let entries = [];
+        let nextInvoiceNum = 1;
+        let currentPage = 1;
+        const rowsPerPage = 10;
+
         window.onload = function() {
             if (localStorage.getItem("isLoggedIn") === "true") {
                 showMainApp();
@@ -289,9 +316,6 @@
             document.getElementById("password").value = "";
             document.getElementById("loginError").classList.add("hidden");
         }
-
-        let entries = [];
-        let nextInvoiceNum = 1;
 
         function loadEntries() {
             const savedEntries = localStorage.getItem("goodMartEntries");
@@ -337,16 +361,8 @@
             let months = [...new Set(entries.map(item => item.date ? item.date.substring(0, 7) : ''))].filter(Boolean);
             months.sort().reverse();
 
-            monthFilter.innerHTML = "";
+            monthFilter.innerHTML = '<option value="">কোনো মাস নেই</option>';
             
-            if (months.length === 0) {
-                let option = document.createElement("option");
-                option.value = "";
-                option.textContent = "কোনো মাস নেই";
-                monthFilter.appendChild(option);
-                return;
-            }
-
             months.forEach(m => {
                 let option = document.createElement("option");
                 option.value = m;
@@ -359,14 +375,15 @@
             if (months.includes(currentSelected)) {
                 monthFilter.value = currentSelected;
             } else {
-                monthFilter.value = months[0];
+                monthFilter.value = "";
             }
         }
 
         function renderTable() {
             const tableBody = document.getElementById("tableBody");
-            const monthFilter = document.getElementById("monthFilter");
-            const selectedMonth = monthFilter.value;
+            const monthFilter = document.getElementById("monthFilter").value;
+            const searchDate = document.getElementById("searchDate").value;
+            const searchBrand = document.getElementById("searchBrand").value;
             const searchQuery = document.getElementById("searchInvoice").value.trim().toLowerCase();
             
             tableBody.innerHTML = "";
@@ -375,9 +392,17 @@
             let totalDebit = 0;
 
             let filteredEntries = entries.filter(item => {
-                let matchesMonth = selectedMonth ? (item.date && item.date.startsWith(selectedMonth)) : true;
+                let matchesMonth = monthFilter ? (item.date && item.date.startsWith(monthFilter)) : true;
+                let matchesDate = searchDate ? (item.date === searchDate) : true;
+                let matchesBrand = searchBrand ? (item.brand === searchBrand) : true;
                 let matchesSearch = searchQuery ? (item.number && item.number.toString().toLowerCase().includes(searchQuery)) : true;
-                return matchesMonth && matchesSearch;
+                return matchesMonth && matchesDate && matchesBrand && matchesSearch;
+            });
+
+            // মোট হিসাব সবসময় ফিল্টার করা সকল ডেটার ওপর ভিত্তি করে দেখানো হবে
+            filteredEntries.forEach((item) => {
+                if(item.credit) totalCredit += parseFloat(item.credit);
+                if(item.debit) totalDebit += parseFloat(item.debit);
             });
 
             if (filteredEntries.length === 0) {
@@ -385,13 +410,20 @@
                 document.getElementById("totalCredit").innerText = "0.00";
                 document.getElementById("totalDebit").innerText = "0.00";
                 document.getElementById("closingBalance").innerText = "0.00";
+                document.getElementById("paginationControls").innerHTML = "";
                 return;
             }
 
-            filteredEntries.forEach((item) => {
-                if(item.credit) totalCredit += parseFloat(item.credit);
-                if(item.debit) totalDebit += parseFloat(item.debit);
+            // পেজিনেশন হিসাব
+            let totalPages = Math.ceil(filteredEntries.length / rowsPerPage);
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
 
+            let startIndex = (currentPage - 1) * rowsPerPage;
+            let endIndex = startIndex + rowsPerPage;
+            let paginatedEntries = filteredEntries.slice(startIndex, endIndex);
+
+            paginatedEntries.forEach((item) => {
                 let originalIndex = entries.findIndex(e => e === item);
 
                 let row = `<tr class="border-b border-gray-200 hover:bg-gray-100">
@@ -415,6 +447,34 @@
             
             let balanceText = `${Math.abs(closingBalance).toFixed(2)} (${closingBalance >= 0 ? 'Credit Balance' : 'Debit Balance'})`;
             document.getElementById("closingBalance").innerText = balanceText;
+
+            renderPagination(totalPages);
+        }
+
+        function renderPagination(totalPages) {
+            const paginationControls = document.getElementById("paginationControls");
+            paginationControls.innerHTML = "";
+
+            if (totalPages <= 1) return;
+
+            let prevDisabled = currentPage === 1 ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700";
+            let nextDisabled = currentPage === totalPages ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-700";
+
+            let paginationHTML = `
+                <div class="text-sm text-gray-600">
+                    পৃষ্ঠা <span class="font-bold">${currentPage}</span> / <span class="font-bold">${totalPages}</span>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="changePage(${currentPage - 1})" class="bg-blue-600 text-white px-3 py-1 rounded text-sm ${prevDisabled}">পূর্ববর্তী</button>
+                    <button onclick="changePage(${currentPage + 1})" class="bg-blue-600 text-white px-3 py-1 rounded text-sm ${nextDisabled}">পরবর্তী</button>
+                </div>
+            `;
+            paginationControls.innerHTML = paginationHTML;
+        }
+
+        function changePage(page) {
+            currentPage = page;
+            renderTable();
         }
 
         document.getElementById("invoiceForm").addEventListener("submit", function(e) {
@@ -459,6 +519,7 @@
             document.getElementById("debit").value = "";
 
             updateMonthFilter(entryMonth);
+            currentPage = 1;
             renderTable();
         });
 
@@ -471,7 +532,7 @@
             
             document.getElementById("printMonthCredit").innerText = totalCredit;
             document.getElementById("printMonthDebit").innerText = totalDebit;
-            document.getElementById("printClosingBalance").innerText = closingBalance;
+            document.getElementById("printClosingBalance").innerText, closingBalance;
             
             document.getElementById("invoiceModal").classList.remove("hidden");
         }
